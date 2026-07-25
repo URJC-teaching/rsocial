@@ -1,0 +1,13 @@
+slides/build/
+
+# ROS 2/colcon build artifacts at workspace root
+build/
+install/
+log/
+
+# Vendored workspace dependency checkout
+src/thirdparty/
+
+# Python cache (any subdirectory)
+**/__pycache__/
+**/*.pyc
