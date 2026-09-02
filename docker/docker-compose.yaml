@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  ros2_clase:
+    image: tu_usuario/ros2_clase:latest
+    container_name: workspace_ros2
+    stdin_open: true 
+    tty: true        
+    command: /bin/bash
+    volumes:
+      # Vincula la carpeta local "src" del alumno con la del contenedor
+      - ./src:/home/ubuntu/ros2_ws/src
