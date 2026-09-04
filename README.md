@@ -19,7 +19,7 @@ source ~/rsocial/install/setup.bash
 
 ```bash
 mkdir -p ~/rsocial/src
-git clone https://github.com/URJC-teaching/rsocial.git ~/rsocial/src/rsocial
+git clone https://github.com/rodperex/rsocial.git ~/rsocial/src/rsocial
 cd ~/rsocial/src
 vcs import < rsocial/src/thirdparty.repos
 cd ~/rsocial
@@ -29,9 +29,11 @@ rosdep install --from-paths src --ignore-src -r -y \\
 	--skip-keys="ament_python rclpy_lifecycle"
 
 # Las dependencias Python de los third parties no las instala rosdep.
-# ROS 2 Jazzy ejecuta los entry points con /usr/bin/python3.
-uv pip install --system -r src/thirdparty/yolo_ros/requirements.txt
-uv pip install --system -r src/thirdparty/simple_hri/simple_hri/requirements.txt
+# Crear el entorno con los paquetes de ROS visibles desde el venv.
+uv venv --system-site-packages .venv
+source .venv/bin/activate
+uv pip install -r src/thirdparty/yolo_ros/requirements.txt
+uv pip install -r src/thirdparty/simple_hri/simple_hri/requirements.txt
 
 # Necesario para sound_play (reproducción y síntesis de audio).
 sudo apt install -y gstreamer1.0 gstreamer1.0-alsa \\
@@ -40,6 +42,15 @@ sudo apt install -y gstreamer1.0 gstreamer1.0-alsa \\
 
 colcon build --symlink-install
 source install/setup.bash
+```
+
+En cada terminal que ejecute nodos hay que activar también `.venv` después de
+cargar ROS y el workspace:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source ~/rsocial/.venv/bin/activate
+source ~/rsocial/install/setup.bash
 ```
 
 `yolo_ros` necesita instalarse explícitamente con `uv`; si se omite ese paso,
@@ -52,8 +63,9 @@ que la cámara y la conversión de imágenes siguen funcionando.
 ### Portabilidad de `simple_hri`
 
 `simple_hri` incluye servicios locales y servicios que requieren credenciales.
-Los comandos anteriores instalan las dependencias en el mismo intérprete que
-usan los entry points de ROS, incluido el wheel de WebRTC VAD. Los launchers
+El entorno virtual contiene las dependencias Python y ve los paquetes ROS del
+sistema gracias a `--system-site-packages`, incluido el wheel de WebRTC VAD.
+Los launchers
 locales no necesitan claves, pero sí descargan modelos la primera
 vez y requieren micrófono y salida de audio accesibles desde el sistema:
 
