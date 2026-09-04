@@ -37,20 +37,27 @@ rosdep install --from-paths src --ignore-src -r -y \
 	--skip-keys="ament_python rclpy_lifecycle"
 
 # Las dependencias Python de los third parties no las instala rosdep.
-# simple_hri usa este entorno virtual, con los paquetes de ROS visibles.
-uv venv --seed --system-site-packages .venv
+# simple_hri usa un entorno virtual aislado.
+# ROS se carga antes para que sus paquetes Python estén disponibles.
+uv venv --seed .venv
 source .venv/bin/activate
+python3 -m pip install colcon-common-extensions
 python3 -m pip install -r src/thirdparty/simple_hri/simple_hri/requirements.txt
 
 # Necesario para sound_play (reproducción y síntesis de audio).
 sudo apt install -y libportaudio2 gstreamer1.0 gstreamer1.0-alsa gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly python3-gi
-
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+yolo-ros 4.7.0 requires lap>=0.5.12, which is not installed.
+yolo-ros 4.7.0 requires opencv-python-headless>=4.8.1.78, which is not installed.
+yolo-ros 4.7.0 requires ultralytics==8.4.6, which is not installed.
+generate-parameter-library-py 0.7.3 requires typeguard, which is not installed.
 python3 -m colcon build --symlink-install
 source install/setup.bash
 ```
 
 Activa `.venv` antes de compilar y en cada terminal desde la que ejecutes
-nodos ROS.
+nodos ROS. `colcon-common-extensions` se instala dentro del entorno virtual
+para que `python3 -m colcon` use el mismo intérprete que `simple_hri`.
 
 En cada terminal que ejecute nodos hay que activar también `.venv` después de
 cargar ROS y el workspace:
@@ -81,16 +88,16 @@ la conversión de imágenes siguen funcionando.
 ### Portabilidad de `simple_hri`
 
 `simple_hri` incluye servicios locales y servicios que requieren credenciales.
-El entorno virtual contiene las dependencias Python y ve los paquetes ROS del
-sistema gracias a `--system-site-packages`, incluido el wheel de WebRTC VAD.
-Los launchers
+El entorno virtual aísla sus dependencias Python de las versiones instaladas
+en el sistema, incluido el wheel de WebRTC VAD. Los launchers
 locales no necesitan claves, pero sí descargan modelos la primera
 vez y requieren micrófono y salida de audio accesibles desde el sistema:
 
 El extractor local usa `google/flan-t5-small` con la tarea
 `text2text-generation`. El requirements fija una versión compatible de
 `transformers` y de NumPy para que todos los servicios funcionen dentro del
-entorno virtual.
+entorno virtual y declara una versión de Numba que no hereda una copia
+incompatible del sistema.
 
 ```bash
 ros2 launch simple_hri local_simple_hri.launch.py
