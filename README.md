@@ -41,16 +41,12 @@ rosdep install --from-paths src --ignore-src -r -y \
 # ROS se carga antes para que sus paquetes Python estén disponibles.
 uv venv --seed .venv
 source .venv/bin/activate
+
+# Necesario para sound_play y PyGObject (reproducción y síntesis de audio).
+sudo apt update && sudo apt install -y libportaudio2 gstreamer1.0-tools gstreamer1.0-alsa gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 libgirepository-2.0-dev libcairo2-dev pkg-config python3-dev
+
 python3 -m pip install colcon-common-extensions
 python3 -m pip install -r src/thirdparty/simple_hri/simple_hri/requirements.txt
-
-# Necesario para sound_play (reproducción y síntesis de audio).
-sudo apt install -y libportaudio2 gstreamer1.0 gstreamer1.0-alsa gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly python3-gi
-ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
-yolo-ros 4.7.0 requires lap>=0.5.12, which is not installed.
-yolo-ros 4.7.0 requires opencv-python-headless>=4.8.1.78, which is not installed.
-yolo-ros 4.7.0 requires ultralytics==8.4.6, which is not installed.
-generate-parameter-library-py 0.7.3 requires typeguard, which is not installed.
 python3 -m colcon build --symlink-install
 source install/setup.bash
 ```
