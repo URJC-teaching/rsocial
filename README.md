@@ -24,6 +24,9 @@ cd ~/rsocial/src
 vcs import < rsocial/src/thirdparty.repos
 cd ~/rsocial
 
+# Cargar ROS antes de crear el entorno virtual.
+source /opt/ros/jazzy/setup.bash
+
 # Instalar uv si todavía no está disponible.
 curl -LsSf https://astral.sh/uv/install.sh | sh
 # Abrir una terminal nueva o recargar el PATH antes de continuar.
@@ -35,18 +38,19 @@ rosdep install --from-paths src --ignore-src -r -y \
 
 # Las dependencias Python de los third parties no las instala rosdep.
 # simple_hri usa este entorno virtual, con los paquetes de ROS visibles.
-uv venv --system-site-packages .venv
+uv venv --seed --system-site-packages .venv
 source .venv/bin/activate
-uv pip install -r src/thirdparty/simple_hri/simple_hri/requirements.txt
+python3 -m pip install -r src/thirdparty/simple_hri/simple_hri/requirements.txt
 
 # Necesario para sound_play (reproducción y síntesis de audio).
-sudo apt install -y gstreamer1.0 gstreamer1.0-alsa \
-	gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
-  gstreamer1.0-plugins-ugly python3-gi
+sudo apt install -y libportaudio2 gstreamer1.0 gstreamer1.0-alsa gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly python3-gi
 
-colcon build --symlink-install
+python3 -m colcon build --symlink-install
 source install/setup.bash
 ```
+
+Activa `.venv` antes de compilar y en cada terminal desde la que ejecutes
+nodos ROS.
 
 En cada terminal que ejecute nodos hay que activar también `.venv` después de
 cargar ROS y el workspace:
@@ -82,6 +86,11 @@ sistema gracias a `--system-site-packages`, incluido el wheel de WebRTC VAD.
 Los launchers
 locales no necesitan claves, pero sí descargan modelos la primera
 vez y requieren micrófono y salida de audio accesibles desde el sistema:
+
+El extractor local usa `google/flan-t5-small` con la tarea
+`text2text-generation`. El requirements fija una versión compatible de
+`transformers` y de NumPy para que todos los servicios funcionen dentro del
+entorno virtual.
 
 ```bash
 ros2 launch simple_hri local_simple_hri.launch.py

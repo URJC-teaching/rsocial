@@ -11,3 +11,5 @@ src/thirdparty/
 # Python cache (any subdirectory)
 **/__pycache__/
 **/*.pyc
+
+models/
