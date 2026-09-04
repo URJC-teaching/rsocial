@@ -24,20 +24,24 @@ cd ~/rsocial/src
 vcs import < rsocial/src/thirdparty.repos
 cd ~/rsocial
 
+# Instalar uv si todavía no está disponible.
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# Abrir una terminal nueva o recargar el PATH antes de continuar.
+source "$HOME/.local/bin/env"
+
 rosdep update
-rosdep install --from-paths src --ignore-src -r -y \\
+rosdep install --from-paths src --ignore-src -r -y \
 	--skip-keys="ament_python rclpy_lifecycle"
 
 # Las dependencias Python de los third parties no las instala rosdep.
-# Crear el entorno con los paquetes de ROS visibles desde el venv.
+# simple_hri usa este entorno virtual, con los paquetes de ROS visibles.
 uv venv --system-site-packages .venv
 source .venv/bin/activate
-uv pip install -r src/thirdparty/yolo_ros/requirements.txt
 uv pip install -r src/thirdparty/simple_hri/simple_hri/requirements.txt
 
 # Necesario para sound_play (reproducción y síntesis de audio).
-sudo apt install -y gstreamer1.0 gstreamer1.0-alsa \\
-  gstreamer1.0-plugins-base gstreamer1.0-plugins-good \\
+sudo apt install -y gstreamer1.0 gstreamer1.0-alsa \
+	gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
   gstreamer1.0-plugins-ugly python3-gi
 
 colcon build --symlink-install
@@ -53,12 +57,22 @@ source ~/rsocial/.venv/bin/activate
 source ~/rsocial/install/setup.bash
 ```
 
-`yolo_ros` necesita instalarse explícitamente con `uv`; si se omite ese paso,
-`rosdep` puede terminar correctamente pero el nodo fallará al importar
-`ultralytics`, `cv2` o `lap`. La restricción `numpy<2` de `yolo_ros` es
-intencionada: evita incompatibilidades entre `cv_bridge`/ROS 2 Jazzy y NumPy
-2. No se debe sustituir por la versión global de NumPy sin comprobar antes
-que la cámara y la conversión de imágenes siguen funcionando.
+`yolo_ros` no usa `requirements.txt` en su versión actual. Sus dependencias
+están declaradas en `yolo_ros/pyproject.toml` y `colcon build` ejecuta `uv sync`
+automáticamente para crear o actualizar `src/thirdparty/yolo_ros/yolo_ros/.venv`.
+Si se quiere preparar ese entorno antes de compilar, se puede ejecutar:
+
+```bash
+cd src/thirdparty/yolo_ros/yolo_ros
+uv venv --python python3 --system-site-packages .venv
+uv sync --no-install-project --no-dev
+cd ../../../..
+```
+
+La restricción `numpy<2` de `yolo_ros` es intencionada: evita
+incompatibilidades entre `cv_bridge`/ROS 2 Jazzy y NumPy 2. No se debe
+sustituir por la versión global de NumPy sin comprobar antes que la cámara y
+la conversión de imágenes siguen funcionando.
 
 ### Portabilidad de `simple_hri`
 
@@ -139,17 +153,17 @@ Los nodos individuales son `obstacle_detector_node` y `obstacle_detector_node_no
 Primero inicia una cámara. Para una cámara OAK-D:
 
 ```bash
-ros2 launch oak_d_camera camera.launch.py \\
+ros2 launch oak_d_camera camera.launch.py \
 	use_disparity:=False use_lr_raw:=False use_pointcloud:=False
 ```
 
 Después inicia YOLO con los topics de la OAK-D y transforma sus detecciones:
 
 ```bash
-ros2 launch yolo_bringup yolo.launch.py \\
-	input_image_topic:=/color/image \\
-	input_depth_topic:=/stereo/depth \\
-	input_depth_info_topic:=/stereo/camera_info \\
+ros2 launch yolo_bringup yolo.launch.py \
+	input_image_topic:=/color/image \
+	input_depth_topic:=/stereo/depth \
+	input_depth_info_topic:=/stereo/camera_info \
 	target_frame:=oak-d_frame
 
 ros2 launch camera yolo_to_standard2d.launch.py
@@ -199,7 +213,7 @@ ros2 run bt_examples decorator
 Para editar árboles con Groot, instala el puente una vez:
 
 ```bash
-python3 -m pip install --user \\
+python3 -m pip install --user \
 	git+https://github.com/narcispr/py_trees_meet_groot.git
 ```
 
