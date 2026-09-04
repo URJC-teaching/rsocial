@@ -5,7 +5,7 @@ El repositorio contiene nodos Python, comunicación entre nodos, TF, sensores, n
 ## Requisitos
 
 - Ubuntu 24.04 con ROS 2 Jazzy instalado (la imagen Docker del repositorio ya incluye este entorno).
-- `git`, `python3`, `python3-pip`, `python3-rosdep`, `python3-vcstool` y `python3-colcon-common-extensions`.
+- `git`, `python3`, `python3-rosdep`, `python3-vcstool`, `python3-colcon-common-extensions` y [`uv`](https://docs.astral.sh/uv/).
 - Para los ejemplos de movimiento y navegación: un robot Kobuki o una simulación que publique los topics y TF necesarios.
 
 En cada terminal desde la que se ejecute ROS hay que cargar ROS y este workspace:
@@ -27,9 +27,52 @@ cd ~/rsocial
 rosdep update
 rosdep install --from-paths src --ignore-src -r -y \\
 	--skip-keys="ament_python rclpy_lifecycle"
+
+# Las dependencias Python de los third parties no las instala rosdep.
+# ROS 2 Jazzy ejecuta los entry points con /usr/bin/python3.
+uv pip install --system -r src/thirdparty/yolo_ros/requirements.txt
+uv pip install --system -r src/thirdparty/simple_hri/simple_hri/requirements.txt
+
+# Necesario para sound_play (reproducción y síntesis de audio).
+sudo apt install -y gstreamer1.0 gstreamer1.0-alsa \\
+  gstreamer1.0-plugins-base gstreamer1.0-plugins-good \\
+  gstreamer1.0-plugins-ugly python3-gi
+
 colcon build --symlink-install
 source install/setup.bash
 ```
+
+`yolo_ros` necesita instalarse explícitamente con `uv`; si se omite ese paso,
+`rosdep` puede terminar correctamente pero el nodo fallará al importar
+`ultralytics`, `cv2` o `lap`. La restricción `numpy<2` de `yolo_ros` es
+intencionada: evita incompatibilidades entre `cv_bridge`/ROS 2 Jazzy y NumPy
+2. No se debe sustituir por la versión global de NumPy sin comprobar antes
+que la cámara y la conversión de imágenes siguen funcionando.
+
+### Portabilidad de `simple_hri`
+
+`simple_hri` incluye servicios locales y servicios que requieren credenciales.
+Los comandos anteriores instalan las dependencias en el mismo intérprete que
+usan los entry points de ROS, incluido el wheel de WebRTC VAD. Los launchers
+locales no necesitan claves, pero sí descargan modelos la primera
+vez y requieren micrófono y salida de audio accesibles desde el sistema:
+
+```bash
+ros2 launch simple_hri local_simple_hri.launch.py
+```
+
+Si el nodo no arranca fuera del equipo original, comprueba primero el
+dispositivo de audio y las importaciones desde la misma terminal donde se
+cargaron ROS y el entorno virtual:
+
+```bash
+python3 -c "import numpy, torch, transformers, whisper, sounddevice, webrtcvad; print('Dependencias Python OK')"
+python3 -c "import sounddevice as sd; print(sd.query_devices())"
+```
+
+En sistemas sin micrófono o servidor de audio, se pueden probar los servicios
+de texto, pero los servicios STT/TTS locales no podrán grabar o reproducir
+audio hasta configurar ALSA/PulseAudio o el equivalente del sistema.
 
 ## Ejemplos básicos
 
