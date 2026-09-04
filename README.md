@@ -42,8 +42,8 @@ rosdep install --from-paths src --ignore-src -r -y \
 uv venv --seed .venv
 source .venv/bin/activate
 
-# Necesario para sound_play y PyGObject (reproducción y síntesis de audio).
-sudo apt update && sudo apt install -y libportaudio2 gstreamer1.0-tools gstreamer1.0-alsa gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 libgirepository-2.0-dev libcairo2-dev pkg-config python3-dev
+# Necesario para sound_play (reproducción y síntesis de audio).
+sudo apt update && sudo apt install -y libportaudio2 gstreamer1.0-tools gstreamer1.0-alsa gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly python3-gi python3-gst-1.0
 
 python3 -m pip install colcon-common-extensions
 python3 -m pip install -r src/thirdparty/simple_hri/simple_hri/requirements.txt
