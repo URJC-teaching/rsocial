@@ -47,8 +47,13 @@ sudo apt update && sudo apt install -y libportaudio2 gstreamer1.0-tools gstreame
 
 python3 -m pip install colcon-common-extensions
 python3 -m pip install -r src/thirdparty/simple_hri/simple_hri/requirements.txt
+# Si la versión descargada de yolo_ros incluye requirements.txt, instálalo.
+if [ -f src/thirdparty/yolo_ros/requirements.txt ]; then
+	python3 -m pip install -r src/thirdparty/yolo_ros/requirements.txt
+fi
 python3 -m colcon build --symlink-install
 source install/setup.bash
+ros2 interface show simple_hri_interfaces/srv/Speech
 ```
 
 Activa `.venv` antes de compilar y en cada terminal desde la que ejecutes
@@ -64,10 +69,11 @@ source ~/rsocial/.venv/bin/activate
 source ~/rsocial/install/setup.bash
 ```
 
-`yolo_ros` no usa `requirements.txt` en su versión actual. Sus dependencias
-están declaradas en `yolo_ros/pyproject.toml` y `colcon build` ejecuta `uv sync`
-automáticamente para crear o actualizar `src/thirdparty/yolo_ros/yolo_ros/.venv`.
-Si se quiere preparar ese entorno antes de compilar, se puede ejecutar:
+Cuando la versión descargada de `yolo_ros` no incluye `requirements.txt`, sus
+dependencias están declaradas en `yolo_ros/pyproject.toml` y `colcon build`
+ejecuta `uv sync` automáticamente para crear o actualizar
+`src/thirdparty/yolo_ros/yolo_ros/.venv`. Si se quiere preparar ese entorno
+antes de compilar, se puede ejecutar:
 
 ```bash
 cd src/thirdparty/yolo_ros/yolo_ros
@@ -85,7 +91,8 @@ la conversión de imágenes siguen funcionando.
 
 `simple_hri` incluye servicios locales y servicios que requieren credenciales.
 El entorno virtual aísla sus dependencias Python de las versiones instaladas
-en el sistema, incluido el wheel de WebRTC VAD. Los launchers
+en el sistema, incluido el wheel de WebRTC VAD. `sound_play` se ejecuta con el
+Python del sistema para usar las bindings GStreamer instaladas por APT. Los launchers
 locales no necesitan claves, pero sí descargan modelos la primera
 vez y requieren micrófono y salida de audio accesibles desde el sistema:
 
@@ -111,6 +118,14 @@ python3 -c "import sounddevice as sd; print(sd.query_devices())"
 En sistemas sin micrófono o servidor de audio, se pueden probar los servicios
 de texto, pero los servicios STT/TTS locales no podrán grabar o reproducir
 audio hasta configurar ALSA/PulseAudio o el equivalente del sistema.
+
+Si `sound_play` termina con `core dumped` o un fallo nativo al iniciar, usa
+Cyclone DDS en la terminal antes de lanzar `simple_hri`:
+
+```bash
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+ros2 launch simple_hri local_simple_hri.launch.py
+```
 
 ## Ejemplos básicos
 
@@ -160,7 +175,7 @@ ros2 launch laser laser.launch.py
 
 Los nodos individuales son `obstacle_detector_node` y `obstacle_detector_node_no_tf`.
 
-### Cámara y YOLO
+### Cámara
 
 Primero inicia una cámara. Para una cámara OAK-D:
 
@@ -169,19 +184,40 @@ ros2 launch oak_d_camera camera.launch.py \
 	use_disparity:=False use_lr_raw:=False use_pointcloud:=False
 ```
 
-Después inicia YOLO con los topics de la OAK-D y transforma sus detecciones:
+Después, consulta la sección [YOLO](#yolo) para lanzar la detección con los
+topics publicados por la cámara y elegir entre CPU y GPU.
+
+### YOLO
+
+El launcher `yolo.launch.py` necesita conocer los topics publicados por la
+cámara. Como mínimo, especifica el topic de imagen, el de profundidad, el de
+información de cámara y el frame de destino. Por ejemplo, para una cámara
+OAK-D:
 
 ```bash
 ros2 launch yolo_bringup yolo.launch.py \
 	input_image_topic:=/color/image \
 	input_depth_topic:=/stereo/depth \
 	input_depth_info_topic:=/stereo/camera_info \
-	target_frame:=oak-d_frame
-
-ros2 launch camera yolo_to_standard2d.launch.py
+	target_frame:=oak-d_frame \
+	device:=cpu
 ```
 
-Para detecciones 3D usa `yolo_to_standard3d.launch.py`. Con otra cámara hay que sustituir los topics y `target_frame` por los que publique ese dispositivo.
+El launcher usa `cuda:0` por defecto. Si el equipo no dispone de una GPU
+NVIDIA con CUDA, añade `device:=cpu` como en el ejemplo anterior. Si se dispone
+de CUDA, se puede omitir ese argumento o indicar el dispositivo correspondiente,
+por ejemplo `device:=cuda:0`.
+
+Para usar una cámara RGB-D con otros nombres de topics, sustituye esos cuatro
+valores por los que publique la cámara. Para detecciones 2D o 3D, conecta
+después la salida de YOLO con el conversor correspondiente:
+
+```bash
+ros2 launch camera yolo_to_standard2d.launch.py
+# o bien:
+ros2 launch camera yolo_to_standard3d.launch.py
+```
+
 
 ## Control y navegación
 
